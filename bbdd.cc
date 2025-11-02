@@ -26,10 +26,12 @@
 #endif
 
 const int kWindowWidth = 1250, kWindowHeight = 700;
+float scroll_offset_x;
 int InfoScroll = 0;
+int TableScroll = 0;
 int TableCount = 0;
 char CurrentTable[50];
-const int NumbOfLines = 10;
+const int NumbOfLines = 12;
 
 struct Vec2{	//Struct to use points of references and vectors
 	float x,y;
@@ -118,7 +120,7 @@ void DrawWindows(Console* console, Viewer* viewer); //Function to draw every gra
 void DrawTables(TableName* tablename);
 void InfoScroller();
 
-void DrawQueryTextLine(Console* console, bool* iswriting, int* linePos); //Function to draw query line
+void DrawQueryTextLine(Console* console, bool* iswriting); //Function to draw query line
 
 void DrawResultText(Console* console);	//Function to draw every cue line
 void ProccesResultText(Console* console, char* resultstring, char* sql); //To procces new query lines
@@ -175,8 +177,8 @@ int esat::main(int argc, char **argv){
 		frameCounter = (frameCounter>=fps)?0:frameCounter +1;
 		last_time = esat::Time();
 
-		//linePos gets were user is writing in the string
-		int linePos = QueryTexting(console, &writing,currenttable,currentcolumn,tablename,info) * 10; //Query texting gets user writing inputs
+		//QueryTexting gets user writing inputs
+		QueryTexting(console, &writing,currenttable,currentcolumn,tablename,info);
 
 		//Drawing functions
 		esat::DrawBegin();
@@ -188,7 +190,7 @@ int esat::main(int argc, char **argv){
 
 		DrawTables(tablename);
 
-		DrawQueryTextLine(console, &writing, &linePos);	//Function to draw interactive text line (Query writeable line)
+		DrawQueryTextLine(console, &writing);	//Function to draw interactive text line (Query writeable line)
 
 		DrawResultText(console);	//Function to draw text that displays query historial
 
@@ -371,12 +373,18 @@ void CheckTable(){
 	struct Tables* currenttable = tablelist;
 
 	while(currenttable != NULL){
-		//Checks if it's inside a table's square
-		if(MouseInSquare(currenttablename->points[0], currenttablename->points[2]) && esat::MouseButtonDown(0)){
+		Vec2 curpoint0 = currenttablename->points[0];
+		curpoint0.x -= scroll_offset_x;
+
+		Vec2 curpoint2 = currenttablename->points[2];
+		curpoint2.x -= scroll_offset_x;
+
+		if(MouseInSquare(curpoint0, curpoint2) && esat::MouseButtonDown(0)){
 			strncpy(CurrentTable, currenttable->table_namestring, 49);
 			CurrentTable[49] = '\0';
+			InfoScroll = 0;
 			#ifdef WIN32
-				soloud.play(audio[0], 1.0f /* volume */, 0.0f /* pan */);
+					soloud.play(audio[0], 1.0f, 0.0f);
 			#endif
 			break;
 		}
@@ -558,11 +566,8 @@ void InitPoints(TableName** tablename){
 			struct TableName *tablename = (struct TableName*)malloc(sizeof(struct TableName));
 			int text_len = strlen(currenttable->table_namestring);
 			//Aprox width of a character
-			float charwidth = 10.5;
-			if(text_len > 8){
-				charwidth = 9.5;
-			}
-			float textwidth = text_len * charwidth;
+			float charwidth = 9.0f;
+			float textwidth = text_len * charwidth + 5.0f;
 			//Makes the rectangle for the table name
 			tablename->points[0].x = currentx;
 			tablename->points[0].y = topviewerborder + 30;
@@ -676,13 +681,22 @@ void DrawTables(TableName* tablename){
 		//Table Names
 	struct TableName *currenttablename = tablenamelist;
 	struct Tables *currenttable = tablelist;
+	float kCharWidth = 9;
+  scroll_offset_x = (float) TableScroll * kCharWidth * 5.0f; 
 	//Draws the table and it's name
 	while(currenttable != NULL){
+		float draw_points[8];
+		for(int i = 0; i < 4; i++){
+				draw_points[i * 2] = currenttablename->points[i].x - scroll_offset_x;
+				draw_points[i * 2 + 1] = currenttablename->points[i].y;
+		}
+
 		esat::DrawSetStrokeColor(255,50,50,80);
 		esat::DrawSetFillColor(255,255,255,5);
-		esat::DrawSolidPath(&currenttablename->points[0].x, 4);
+		esat::DrawSolidPath(draw_points, 4); 
 		esat::DrawSetFillColor(255,255,255,255);
-		esat::DrawText(currenttable->stringpoints.x,currenttable->stringpoints.y,currenttable->table_namestring);
+		esat::DrawText(currenttable->stringpoints.x - scroll_offset_x, currenttable->stringpoints.y, currenttable->table_namestring); 
+		
 		currenttablename = currenttablename->next;
 		currenttable = currenttable->next;
 	}
@@ -752,6 +766,13 @@ void InfoScroller(){
 			InfoScroll = 0;
 		}
 	}
+	//Table names
+	if (esat::IsSpecialKeyDown(esat::kSpecialKey_Right)){
+			TableScroll += 1;
+	}
+	if (esat::IsSpecialKeyDown(esat::kSpecialKey_Left)){
+			TableScroll -= 1;
+	}
 }
 
 void ResetTables(Tables* currenttable,Columns* currentcolumn,TableName* currenttablename,Info* info){
@@ -762,7 +783,11 @@ void ResetTables(Tables* currenttable,Columns* currentcolumn,TableName* currentt
 }
 
 //Function to draw Query Historial, and every line of It, appart from animation the line that displays pos of writing |
-void DrawQueryTextLine(Console* console, bool* iswriting, int* linePos){
+void DrawQueryTextLine(Console* console, bool* iswriting){
+	float lineX = (console)->terminal_text.x, lineY = (console)->terminal_text.y;
+
+	float linePos = strlen(console->terminal_string) * 9;
+	float lineOffset = linePos + (float) lineX + 2.5f;
 	static int LineAnimation = 0;
 	//If user if writing
 	if(*iswriting){
@@ -772,10 +797,8 @@ void DrawQueryTextLine(Console* console, bool* iswriting, int* linePos){
 		}
 		//If animation is less than 15 display It, so if animation will display half the time only
 		if(LineAnimation <= 15){
-			float lineX = (console)->terminal_text.x, lineY = (console)->terminal_text.y;
-
 			esat::DrawSetStrokeColor(255,255,255,255);
-			esat::DrawLine(lineX + *linePos, lineY - 12, lineX + *linePos, lineY + 3);
+			esat::DrawLine(lineOffset, lineY - 12, lineOffset, lineY + 3);
 		}
 	}
 }
