@@ -26,7 +26,7 @@
 #endif
 
 const int kWindowWidth = 1250, kWindowHeight = 700;
-
+int InfoScroll = 0;
 int TableCount = 0;
 char CurrentTable[50];
 const int NumbOfLines = 10;
@@ -116,6 +116,7 @@ void ClosePointers(Console* console, Viewer* viewer);	//Function to close every 
 
 void DrawWindows(Console* console, Viewer* viewer); //Function to draw every graphic aspect
 void DrawTables(TableName* tablename);
+void InfoScroller();
 
 void DrawQueryTextLine(Console* console, bool* iswriting, int* linePos); //Function to draw query line
 
@@ -194,10 +195,9 @@ int esat::main(int argc, char **argv){
 		esat::DrawEnd();
 
     CheckTable();
+		InfoScroller();
 		esat::WindowFrame(); //End of that frame
   }
-  
-  
   esat::WindowDestroy();
 	FreeSound();
   ClosePointers(console, viewer); //Function to shut all pointers
@@ -558,7 +558,10 @@ void InitPoints(TableName** tablename){
 			struct TableName *tablename = (struct TableName*)malloc(sizeof(struct TableName));
 			int text_len = strlen(currenttable->table_namestring);
 			//Aprox width of a character
-			float charwidth = 11;
+			float charwidth = 10.5;
+			if(text_len > 8){
+				charwidth = 9.5;
+			}
 			float textwidth = text_len * charwidth;
 			//Makes the rectangle for the table name
 			tablename->points[0].x = currentx;
@@ -595,15 +598,16 @@ void InitPoints(TableName** tablename){
 
 		while(currentcolumn != NULL){
 			//Calculates the width based on the table's column count and the window width
-			float xlength = (kWindowWidth - border)/currenttable->ColumnCount;
+			float xlength = (kWindowWidth - border) / currenttable->ColumnCount;
+			float letterSize = 10;
 			//Defines the four corner points of the rectangle
-			currentcolumn->points[0].x = xlength * ColumnCount + 10;
+			currentcolumn->points[0].x = xlength * ColumnCount + letterSize;
 			currentcolumn->points[0].y = topviewerborder + 60 ;
 
 			currentcolumn->points[1].x = xlength * ColumnCount;
 			currentcolumn->points[1].y = topviewerborder + 60 ;
 
-			currentcolumn->points[2].x = xlength * ColumnCount + 10;
+			currentcolumn->points[2].x = xlength * ColumnCount + letterSize;
 			currentcolumn->points[2].y = topviewerborder + 60 ;
 
 			currentcolumn->points[3].x = xlength * ColumnCount;
@@ -700,21 +704,56 @@ void DrawTables(TableName* tablename){
 	}
 
 	currenttable = tablelist;
-	//Draws the info
+	//Draws the columns and their name
 	while(currenttable != NULL){
 		if(strcmp(CurrentTable, currenttable->table_namestring) == 0){
 			struct Info *info = currenttable->info;
+			float DataStartBaseY = 105.0f;
+			float RowHeight = 20.0f;
+			float ViewerBottomLimit = kWindowHeight / 2 - 15;
 			while(info != NULL){
-				esat::DrawSetStrokeColor(255,255,255,0);
-				esat::DrawSetFillColor(0,0,0,0);
-				esat::DrawSetFillColor(255,255,255,255);
-				esat::DrawText(info->stringpoints.x, info->stringpoints.y, info->data_namestring);
+				int row = info->row_index;             
+				int visible_row_index = row - InfoScroll;              
+				if(visible_row_index >= 0 && visible_row_index < NumbOfLines){              
+						float y = DataStartBaseY + (visible_row_index * RowHeight);
+						esat::DrawSetStrokeColor(255,255,255,0);
+						esat::DrawSetFillColor(0,0,0,0);
+						esat::DrawSetFillColor(255,255,255,255);
+						if (y < ViewerBottomLimit) {
+								esat::DrawText(info->stringpoints.x, y, info->data_namestring);
+						}
+				}
 				info = info->next;
 			}
 		}
 		currenttable = currenttable->next;
 	}
 }
+void InfoScroller(){
+	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Down)){
+		InfoScroll += 1;
+		struct Tables *curtable = tablelist;
+		while(curtable && strcmp(CurrentTable, curtable->table_namestring) != 0){
+			curtable = curtable->next;
+		}
+		if(curtable){
+			int max_scroll = curtable->row_ammount - NumbOfLines;
+			if(max_scroll < 0){ 
+				max_scroll = 0;
+			}
+			if(InfoScroll > max_scroll){
+				InfoScroll = max_scroll;
+			}
+		}
+	}
+	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Up)){
+		InfoScroll -= 1;
+		if (InfoScroll < 0){
+			InfoScroll = 0;
+		}
+	}
+}
+
 void ResetTables(Tables* currenttable,Columns* currentcolumn,TableName* currenttablename,Info* info){
 	FreeTableList(currenttable);
 	FreeColumnsList(currentcolumn);
