@@ -1,17 +1,17 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+#include "time.h"
 
-#include <esat/window.h>
-#include <esat/draw.h>
-#include <esat/input.h>
-#include <esat/sprite.h>
-#include <esat/time.h>
+#include "esat/window.h"
+#include "esat/draw.h"
+#include "esat/input.h"
+#include "esat/sprite.h"
+#include "esat/time.h"
 
-#include <esat_extra/sqlite3.h>
+#include "esat_extra/sqlite3.h"
 
-//#define WIN32 //Sound can not be played on other OS (At least MacOS), so WIN32 is defined when program is played on Windows10
+#define WIN32 //Sound can not be played on other OS (At least MacOS), so WIN32 is defined when program is played on Windows10
 //If program is used on other OS than Windows10 -> Comment this section
 
 #ifdef WIN32
@@ -25,6 +25,8 @@
 	SoLoud::Wav audio[2];
 #endif
 
+#define LinesInScroll 8
+
 const int kWindowWidth = 1250, kWindowHeight = 700;
 float scroll_offset_x;
 int InfoScroll = 0;
@@ -32,6 +34,12 @@ int TableScroll = 0;
 int TableCount = 0;
 char CurrentTable[50];
 const int NumbOfLines = 12;
+
+
+char query_results[256][256];  // Stores up to 256 lines of query results
+int total_results = 0;         // Number of lines currently stored
+int display_offset = 0;        // Index of the first line currently displayed
+int MouseY = 0;
 
 struct Vec2{	//Struct to use points of references and vectors
 	float x,y;
@@ -54,7 +62,7 @@ struct Console{
 
 	
 	Vec2 result_text;		//Coords of result of query submission
-	char result_string[NumbOfLines][125];	//Every string that contains historial of query
+	char result_string[NumbOfLines][256];	//Every string that contains historial of query
 
 	Vec2 triangle[3];
 
@@ -123,11 +131,12 @@ void InfoScroller();
 void DrawQueryTextLine(Console* console, bool* iswriting); //Function to draw query line
 
 void DrawResultText(Console* console);	//Function to draw every cue line
-void ProccesResultText(Console* console, char* resultstring, char* sql); //To procces new query lines
+void HandleMouseScroll();
+void DrawTriangle(bool direction, float posX, float posY, int offsetY);
 
 void SendQuery(Console* console, char* sql);	//Function that sends query to bbdd and gets response
 int QueryTexting(Console* console, bool* iswriting,Tables* currenttable,Columns* currentcolumn,TableName* currenttablename,Info* info);	//Function to get text input
-static int callback(void *NotUsed, int argc, char **argv, char **azColName);	//Callback from bbdd
+static int callback(void *data, int argc, char **argv, char **azColName);	//Callback from bbdd
 
 bool MouseInSquare(Vec2 point0, Vec2 point2);	//Function to calc if mouse is inside a square
 
@@ -168,14 +177,14 @@ int esat::main(int argc, char **argv){
 	InitSound();
 
 	while(esat::WindowIsOpened() && !esat::IsSpecialKeyDown(esat::kSpecialKey_Escape)){
-
+		last_time = esat::Time();
 		do{
 			current_time = esat::Time();
 			deltaTime = current_time - last_time;
 		} while((deltaTime) <= 1000.0 / fps);
 		//Begin of frame
 		frameCounter = (frameCounter>=fps)?0:frameCounter +1;
-		last_time = esat::Time();
+		
 
 		//QueryTexting gets user writing inputs
 		QueryTexting(console, &writing,currenttable,currentcolumn,tablename,info);
@@ -198,6 +207,7 @@ int esat::main(int argc, char **argv){
 
     CheckTable();
 		InfoScroller();
+		HandleMouseScroll();
 		esat::WindowFrame(); //End of that frame
   }
   esat::WindowDestroy();
@@ -301,10 +311,10 @@ static int ColumnTableCallBack(void *data,int argc,char **argv,char **ColName){
 static int InfoCallback(void *data, int argc, char **argv, char **ColName){
     struct Tables *currenttable = (struct Tables*)data;
 
-    for (int i = 0; i < argc; i++){
+    for(int i = 0; i < argc; i++){
         struct Info *info = (struct Info*)malloc(sizeof(struct Info));
         memset(info, 0, sizeof(struct Info)); //Resets it to 0 to avoid crashes
-        if (argv[i] != NULL){
+        if(argv[i] != NULL){
             strncpy(info->data_namestring, argv[i], 49); //Adds the info to the string
 		}
         else{
@@ -333,10 +343,9 @@ void Sql(){
 	int exist = sqlite3_open(file, &DB);
 
 	//If it doesn't exist it gives an error
-	if (exist != SQLITE_OK){
+	if(exist != SQLITE_OK){
 		printf("Error opening\n");
 	}else{
-		printf("Base Opened\n");
 		//String to get the names of the tables
 		char sql[150];
 		snprintf(sql, sizeof(char) * 150, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%%'");
@@ -413,10 +422,10 @@ void InitWindows(Console** console,Viewer** viewer,TableName** tablename){
 
 	//Defines the viewer rectangle coordinates
 	(*viewer)->points[0].x = border;
-	(*viewer)->points[0].y = +topviewerborder;
+	(*viewer)->points[0].y = topviewerborder;
 	
 	(*viewer)->points[1].x = kWindowWidth - border;
-	(*viewer)->points[1].y = +topviewerborder;
+	(*viewer)->points[1].y = topviewerborder;
 	
 	(*viewer)->points[2].x = kWindowWidth - border;
 	(*viewer)->points[2].y = middle - bottomviewerborder;
@@ -500,7 +509,7 @@ void InitWindows(Console** console,Viewer** viewer,TableName** tablename){
 	}
 	//This substracts or sums 10 to make the border inside the window
 	int offset[8] ={10, -10, -10, 10, 10, -10, -10, 10};
-	for (int i = 0; i < 8; i++){
+	for(int i = 0; i < 8; i++){
 			(*console)->terminal[i].x += offset[i];
 	}
 	//This part makes enter button smaller
@@ -678,7 +687,8 @@ void DrawWindows(Console* console,Viewer* viewer){
 	esat::DrawSolidPath(&console->triangle[0].x, 3);
 }
 void DrawTables(TableName* tablename){
-		//Table Names
+	static int TriangleAnimation = 0;
+	//Table Names
 	struct TableName *currenttablename = tablenamelist;
 	struct Tables *currenttable = tablelist;
 	float kCharWidth = 9;
@@ -690,12 +700,12 @@ void DrawTables(TableName* tablename){
 				draw_points[i * 2] = currenttablename->points[i].x - scroll_offset_x;
 				draw_points[i * 2 + 1] = currenttablename->points[i].y;
 		}
-
 		esat::DrawSetStrokeColor(255,50,50,80);
 		esat::DrawSetFillColor(255,255,255,5);
-		esat::DrawSolidPath(draw_points, 4); 
+		esat::DrawSolidPath(draw_points, 4);
 		esat::DrawSetFillColor(255,255,255,255);
 		esat::DrawText(currenttable->stringpoints.x - scroll_offset_x, currenttable->stringpoints.y, currenttable->table_namestring); 
+	
 		
 		currenttablename = currenttablename->next;
 		currenttable = currenttable->next;
@@ -733,15 +743,28 @@ void DrawTables(TableName* tablename){
 						esat::DrawSetStrokeColor(255,255,255,0);
 						esat::DrawSetFillColor(0,0,0,0);
 						esat::DrawSetFillColor(255,255,255,255);
-						if (y < ViewerBottomLimit) {
+						if(y < ViewerBottomLimit){
 								esat::DrawText(info->stringpoints.x, y, info->data_namestring);
 						}
 				}
+				//To paint a triangle down to say player can yo further DOWN in the scroll
+				if(TriangleAnimation >= 45){	//If variable gets to 30 restart it
+					TriangleAnimation = 0;
+				}
+				//If animation is less than 15 display It, so if animation will display half the time only
+				if(TriangleAnimation <= 23){
+					if(visible_row_index > 0 && visible_row_index > NumbOfLines - 1){
+						//ARROW DOWN
+						DrawTriangle(1, 10, kWindowHeight - 377, 0);
+					}
+				}
+				
 				info = info->next;
 			}
 		}
 		currenttable = currenttable->next;
 	}
+	TriangleAnimation++;
 }
 void InfoScroller(){
 	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Down)){
@@ -762,15 +785,15 @@ void InfoScroller(){
 	}
 	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Up)){
 		InfoScroll -= 1;
-		if (InfoScroll < 0){
+		if(InfoScroll < 0){
 			InfoScroll = 0;
 		}
 	}
 	//Table names
-	if (esat::IsSpecialKeyDown(esat::kSpecialKey_Right)){
+	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Right)){
 			TableScroll += 1;
 	}
-	if (esat::IsSpecialKeyDown(esat::kSpecialKey_Left)){
+	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Left)){
 			TableScroll -= 1;
 	}
 }
@@ -804,61 +827,96 @@ void DrawQueryTextLine(Console* console, bool* iswriting){
 }
 //Function to draw Query result lines
 void DrawResultText(Console* console){
-	esat::DrawSetFillColor(255,255,255,255);
+  esat::DrawSetFillColor(255, 255, 255, 255);
   esat::DrawSetTextSize(console->fontsize);
-	//Simply It moves through a double array and displays them
-	for(int i = 0; i < NumbOfLines; i++){
-		esat::DrawText((console)->result_text.x, (console)->result_text.y + i * 15, (console)->result_string[i]);
+
+  // Display 5 visible lines from the current offset
+  for(int i = 0; i < LinesInScroll; i++){
+    int currentLine = display_offset + i;
+    if(currentLine >= total_results) break;
+    esat::DrawText(console->result_text.x,
+                   console->result_text.y + i * 20,
+                   query_results[currentLine]);
+  }
+	//To paint a triangle down to say player can yo further DOWN in the scroll
+	if(total_results > LinesInScroll && display_offset + LinesInScroll != total_results){
+		//ARROW DOWN
+		DrawTriangle(1, 15, kWindowHeight - 233, LinesInScroll * 20);
 	}
-  
+	//To paint a triangle up to say player can yo further UP in the scroll
+	if(total_results > LinesInScroll && display_offset > 0){
+		//ARROW UP
+		DrawTriangle(0, 15, kWindowHeight - 239, 0);
+	}
+}
+//Function to process new lines in the query result lines
+void HandleMouseScroll(){
+	if(esat::MouseWheelY() < MouseY){
+		MouseY = esat::MouseWheelY();
+		if(display_offset + 1 < total_results - LinesInScroll + 1){
+      display_offset++;
+    }
+	}
+	if(esat::MouseWheelY() > MouseY){
+		MouseY = esat::MouseWheelY();
+		if(display_offset > 0){
+			display_offset--;
+      
+    }
+	}
 }
 
-//Function to procces new lines in the query result lines
-void ProccesResultText(Console* console, char* resultstring, char* sql){
-	//If destroy last line by moving them up (0 goes to 1, 1 goes to 2...) 0 Gets freed so we insert the new line
-	for(int i = NumbOfLines - 1; i > 0; i--){
-		snprintf(console->result_string[i], sizeof(char) * 125, "%s", console->result_string[i - 1]);
-	}
-
-	snprintf(console->result_string[0], sizeof(char) * 125, "%s", resultstring);
-}
 //Function that returns submission from bbdd
-static int callback(void *NotUsed, int argc, char **argv, char **azColName){
-   int i;
-   for(i = 0; i<argc; i++){
-      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-   }
-   printf("\n");
-   return 0;
+static int callback(void *data, int argc, char **argv, char **azColName){
+
+  if(total_results >= 256) return 0;
+
+  char line[256] = {0};
+  // Concatenate column names and their values in one line
+  for(int i = 0; i < argc; i++){
+    const char* col = azColName[i] ? azColName[i] : "(null)";
+    const char* val = argv[i] ? argv[i] : "NULL";
+		//To do not get out of line
+    if(strlen(line) + strlen(col) + strlen(val) + 4 >= sizeof(line)) break;
+    strcat(line, col);
+    strcat(line, " = ");
+    strcat(line, val);
+    strcat(line, "  ");
+  }
+
+  snprintf(query_results[total_results], sizeof(query_results[total_results]), "%s", line);
+  total_results++;
+  return 0;
 }
 //Function that send Query writted to the bbdd
 void SendQuery(Console* console, char* sql){
-	sqlite3 *db;
-	char *zErrMsg = 0;
-	int rc;
+  sqlite3 *db;
+  char *zErrMsg = 0;
+  int rc;
 
-	// Open database
-	rc = sqlite3_open("assets/database/database.db", &db);
-	
-	if(rc){
-		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-	}else{
-		fprintf(stderr, "Opened database successfully\n");
+  // Reset result buffer
+  total_results = 0;
+  display_offset = 0;
+  for(int i = 0; i < 256; i++) query_results[i][0] = '\0';
 
-		//Execute SQL statement (Query writed)
-		rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-		
-		if(rc != SQLITE_OK){
-			fprintf(stderr, "SQL error: %s\n", zErrMsg);
-			//Function to procces new line displayed
-			ProccesResultText(console, zErrMsg, sql);
-
-			sqlite3_free(zErrMsg);
-		}else{
-			fprintf(stdout, "Query Sended\n");
-		}
-		sqlite3_close(db);
-	}
+  // Open database
+  rc = sqlite3_open("assets/database/database.db", &db);
+  if(rc){
+    snprintf(query_results[0], sizeof(query_results[0]), "Can't open database: %s", sqlite3_errmsg(db));
+    total_results = 1;
+  } else {
+    // Execute SQL statement
+    rc = sqlite3_exec(db, sql, callback, console, &zErrMsg);
+    if(rc != SQLITE_OK){
+      snprintf(query_results[0], sizeof(query_results[0]), "SQL error: %s", zErrMsg);
+      sqlite3_free(zErrMsg);
+      total_results = 1;
+    } else if(total_results == 0){
+      snprintf(query_results[0], sizeof(query_results[0]), "Query executed successfully, no rows.");
+      total_results = 1;
+    }
+    sqlite3_close(db);
+  }
 }
 
 //Function that controls terminal query texting
@@ -895,7 +953,14 @@ int QueryTexting(Console* console, bool* iswriting,Tables* currenttable,Columns*
 	if(*iswriting){
 		char auxkey = '\0';
 		auxkey = esat::GetNextPressedKey();
-
+		// Fix layout mismatch for Spanish keyboard (ISO layout)
+		switch(auxkey) {
+			case '/': auxkey = '-'; break;   // "/" key becomes "-"
+			case '-': auxkey = '\''; break;  // "-" key becomes "'"
+			case '\'': auxkey = '/'; break;  // "'" key becomes "/"
+			case ']': auxkey = '+'; break;   // "]" key becomes "+"
+			case '[': auxkey = '`'; break;   // "[" key becomes "´"
+		}
 		if(auxkey != '\0' && stringpos < 200){
 			if(esat::IsSpecialKeyPressed(esat::kSpecialKey_Shift)){
 				switch(auxkey){
@@ -984,11 +1049,19 @@ int QueryTexting(Console* console, bool* iswriting,Tables* currenttable,Columns*
 						//auxkey = '¬'; //This key doesn't work
 						break;
 					}
+					case '+':{
+						auxkey = ']';
+						break;
+					}
+					case '`':{
+						auxkey = '[';
+						break;
+					}
 				}
 				console->terminal_string[stringpos] = auxkey;
 				stringpos++;
 			}else{
-				if(auxkey != ' ' && auxkey > 64){
+				if(auxkey != ' ' && auxkey > 64 && auxkey < 91){
 					auxkey += 32;
 				}
 				console->terminal_string[stringpos] = auxkey;
@@ -1008,7 +1081,25 @@ int QueryTexting(Console* console, bool* iswriting,Tables* currenttable,Columns*
 	}
 	return stringpos;
 }
-
+void DrawTriangle(bool direction, float posX, float posY, int offsetY){
+	if(direction){
+		//To paint a triangle down to say player can yo further DOWN in the scroll
+		//ARROW UP
+		float points[6] = { 7 + posX,  8 + posY + offsetY,
+												15 + posX,  8 + posY + offsetY, 
+												11 + posX, 14 + posY + offsetY};
+		esat::DrawSetStrokeColor(255,255,255,255);
+		esat::DrawSolidPath(points, 3);
+	}else{
+		//To paint a triangle up to say player can yo further UP in the scroll
+		//ARROW DOWN
+		float points[6] = { 7 + posX,  8 + posY + offsetY + 5,
+												15 + posX,  8 + posY + offsetY + 5, 
+												11 + posX,  1 + posY + offsetY + 5};
+		esat::DrawSetStrokeColor(255,255,255,255);
+		esat::DrawSolidPath(points, 3);
+	}
+}
 //If mouse is inside of the coords provided it returns a true
 bool MouseInSquare(Vec2 point0, Vec2 point2){
 	float mx = esat::MousePositionX();
