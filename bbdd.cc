@@ -27,6 +27,8 @@
 
 #define LinesInScroll 8
 
+char route[35] = {"assets/database/databasecopy.db"};
+
 const int kWindowWidth = 1250, kWindowHeight = 700;
 float scroll_offset_x;
 int InfoScroll = 0;
@@ -126,13 +128,13 @@ void ClosePointers(Console* console, Viewer* viewer);	//Function to close every 
 
 void DrawWindows(Console* console, Viewer* viewer); //Function to draw every graphic aspect
 void DrawTables(TableName* tablename);
-void InfoScroller();
 
 void DrawQueryTextLine(Console* console, bool* iswriting); //Function to draw query line
 
 void DrawResultText(Console* console);	//Function to draw every cue line
-void HandleMouseScroll();
+void HandleMouseScroll(Console* console, Viewer* viewer);
 void DrawTriangle(bool direction, float posX, float posY, int offsetY);
+void DrawTableWhiteBorder(Vec2 point0, Vec2 point2);
 
 void SendQuery(Console* console, char* sql);	//Function that sends query to bbdd and gets response
 int QueryTexting(Console* console, bool* iswriting,Tables* currenttable,Columns* currentcolumn,TableName* currenttablename,Info* info);	//Function to get text input
@@ -154,9 +156,14 @@ void InitPoints(TableName** tablename);
 
 void ResetTables(Tables* currenttable,Columns* currentcolumn,TableName* currenttablename,Info* info);
 
+
+void CopyBase();
+void BaseCommit();
+void DelDataBaseCopy();
+
 int esat::main(int argc, char **argv){
 
-	unsigned char fps = 25; //Frames per second
+	unsigned char fps = 60; //Frames per second
 	int frameCounter = 0;
 	double deltaTime = 0.0, current_time = 0.0, last_time = 0.0; //Timers for while bucle
 	//Boolean to check if user is writing or not
@@ -169,6 +176,8 @@ int esat::main(int argc, char **argv){
 	Tables* currenttable = NULL;
 	Columns* currentcolumn = NULL;
 	Info* info = NULL;
+
+	CopyBase();
 
 	Sql();
 	InitEsat(); //To init esat window
@@ -188,12 +197,15 @@ int esat::main(int argc, char **argv){
 
 		//QueryTexting gets user writing inputs
 		QueryTexting(console, &writing,currenttable,currentcolumn,tablename,info);
+		//Function of Tables input clicking
+		CheckTable();
+		//Function to get Mouse scroll input
+		HandleMouseScroll(console, viewer);
+
 
 		//Drawing functions
 		esat::DrawBegin();
 		esat::DrawClear(0,0,0);
-		esat::DrawSetStrokeColor(255,50,50,80);
-		esat::DrawSetFillColor(255,255,255,5);
 
 		DrawWindows(console,viewer);	//Function to draw every window and button displayed
 
@@ -204,15 +216,15 @@ int esat::main(int argc, char **argv){
 		DrawResultText(console);	//Function to draw text that displays query historial
 
 		esat::DrawEnd();
-
-    CheckTable();
-		InfoScroller();
-		HandleMouseScroll();
 		esat::WindowFrame(); //End of that frame
   }
   esat::WindowDestroy();
+
 	FreeSound();
   ClosePointers(console, viewer); //Function to shut all pointers
+	ResetTables(currenttable,currentcolumn,tablename,info);
+	DelDataBaseCopy();
+
   return 0;
     
 }
@@ -337,10 +349,7 @@ static int InfoCallback(void *data, int argc, char **argv, char **ColName){
 void Sql(){
 	sqlite3* DB;
 	//Reads DB
-	char file[30];
-	snprintf(file, sizeof(char) * 30, "assets/database/database.db");
-
-	int exist = sqlite3_open(file, &DB);
+	int exist = sqlite3_open(route, &DB);
 
 	//If it doesn't exist it gives an error
 	if(exist != SQLITE_OK){
@@ -705,8 +714,6 @@ void DrawTables(TableName* tablename){
 		esat::DrawSolidPath(draw_points, 4);
 		esat::DrawSetFillColor(255,255,255,255);
 		esat::DrawText(currenttable->stringpoints.x - scroll_offset_x, currenttable->stringpoints.y, currenttable->table_namestring); 
-	
-		
 		currenttablename = currenttablename->next;
 		currenttable = currenttable->next;
 	}
@@ -720,7 +727,7 @@ void DrawTables(TableName* tablename){
 				esat::DrawSetFillColor(0,0,0,0);
 				esat::DrawSolidPath(&currentcolumn->points[0].x, 4);
 				esat::DrawSetFillColor(255,255,255,255);
-				esat::DrawText(currentcolumn->stringpoints.x, currentcolumn->stringpoints.y, currentcolumn->column_namestring);
+				esat::DrawText(currentcolumn->stringpoints.x, currentcolumn->stringpoints.y - 7, currentcolumn->column_namestring);
 				currentcolumn = currentcolumn->next;
 			}
 		}
@@ -744,7 +751,17 @@ void DrawTables(TableName* tablename){
 						esat::DrawSetFillColor(0,0,0,0);
 						esat::DrawSetFillColor(255,255,255,255);
 						if(y < ViewerBottomLimit){
-								esat::DrawText(info->stringpoints.x, y, info->data_namestring);
+							esat::DrawText(info->stringpoints.x, y, info->data_namestring);
+
+							//DRAW WHITE BORDER
+							if(info->col_index == 0){
+								printf("\nEntra a checkprint");
+								float offset = (float) InfoScroll * RowHeight;
+								Vec2 aux[2] = {	info->stringpoints.x - 5, 								info->stringpoints.y - 28 - offset,
+																kWindowWidth - info->stringpoints.x + 5, 	info->stringpoints.y - 7 - offset};
+
+								DrawTableWhiteBorder(aux[0], aux[1]);
+							}
 						}
 				}
 				//To paint a triangle down to say player can yo further DOWN in the scroll
@@ -756,9 +773,11 @@ void DrawTables(TableName* tablename){
 					if(visible_row_index > 0 && visible_row_index > NumbOfLines - 1){
 						//ARROW DOWN
 						DrawTriangle(1, 10, kWindowHeight - 377, 0);
+					}else if(visible_row_index == NumbOfLines){
+						// ARROW DOWN
+						DrawTriangle(0, 10, kWindowHeight - 377, 0);
 					}
 				}
-				
 				info = info->next;
 			}
 		}
@@ -766,38 +785,6 @@ void DrawTables(TableName* tablename){
 	}
 	TriangleAnimation++;
 }
-void InfoScroller(){
-	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Down)){
-		InfoScroll += 1;
-		struct Tables *curtable = tablelist;
-		while(curtable && strcmp(CurrentTable, curtable->table_namestring) != 0){
-			curtable = curtable->next;
-		}
-		if(curtable){
-			int max_scroll = curtable->row_ammount - NumbOfLines;
-			if(max_scroll < 0){ 
-				max_scroll = 0;
-			}
-			if(InfoScroll > max_scroll){
-				InfoScroll = max_scroll;
-			}
-		}
-	}
-	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Up)){
-		InfoScroll -= 1;
-		if(InfoScroll < 0){
-			InfoScroll = 0;
-		}
-	}
-	//Table names
-	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Right)){
-			TableScroll += 1;
-	}
-	if(esat::IsSpecialKeyDown(esat::kSpecialKey_Left)){
-			TableScroll -= 1;
-	}
-}
-
 void ResetTables(Tables* currenttable,Columns* currentcolumn,TableName* currenttablename,Info* info){
 	FreeTableList(currenttable);
 	FreeColumnsList(currentcolumn);
@@ -850,19 +837,57 @@ void DrawResultText(Console* console){
 	}
 }
 //Function to process new lines in the query result lines
-void HandleMouseScroll(){
+void HandleMouseScroll(Console* console, Viewer* viewer){
+	Vec2 TablePoints[2] = {	tablelist->columns->stringpoints.x, tablelist->columns->stringpoints.y - 50,
+													tablelist->columns->stringpoints.x + kWindowWidth, tablelist->columns->stringpoints.y - 20};
+	Vec2 InfoPoints[2] = {	tablelist->info->stringpoints.x, tablelist->info->stringpoints.y - 50,
+													tablelist->info->stringpoints.x + kWindowWidth, tablelist->info->stringpoints.y + 450};
 	if(esat::MouseWheelY() < MouseY){
 		MouseY = esat::MouseWheelY();
-		if(display_offset + 1 < total_results - LinesInScroll + 1){
-      display_offset++;
-    }
+		//SCROLL FOR TERMINAL QUERYS
+		if(MouseInSquare(console->points[0], console->points[2])){
+			if(display_offset + 1 < total_results - LinesInScroll + 1){
+				display_offset++;
+			}
+		//SCROLL FOR TABLES
+		}else if(MouseInSquare(TablePoints[0], TablePoints[1])){
+			TableScroll += 1;
+		//SCROLL FOR TABLES INFO
+		}else if(MouseInSquare(InfoPoints[0], InfoPoints[1])){
+			InfoScroll += 1;
+			struct Tables *curtable = tablelist;
+			while(curtable && strcmp(CurrentTable, curtable->table_namestring) != 0){
+				curtable = curtable->next;
+			}
+			if(curtable){
+				int max_scroll = curtable->row_ammount - NumbOfLines;
+				if(max_scroll < 0){ 
+					max_scroll = 0;
+				}
+				if(InfoScroll > max_scroll){
+					InfoScroll = max_scroll;
+				}
+			}
+		}
 	}
 	if(esat::MouseWheelY() > MouseY){
 		MouseY = esat::MouseWheelY();
-		if(display_offset > 0){
-			display_offset--;
-      
-    }
+		//SCROLL FOR TERMINAL QUERYS
+		if(MouseInSquare(console->points[0], console->points[2])){
+			if(display_offset > 0){
+				display_offset--;
+				
+			}
+		//SCROLL FOR TABLES
+		}else if(MouseInSquare(TablePoints[0], TablePoints[1])){
+			TableScroll -= 1;
+		//SCROLL FOR TABLES INFO
+		}else if(MouseInSquare(InfoPoints[0], InfoPoints[1])){
+			InfoScroll -= 1;
+			if(InfoScroll < 0){
+				InfoScroll = 0;
+			}
+		}
 	}
 }
 
@@ -890,33 +915,45 @@ static int callback(void *data, int argc, char **argv, char **azColName){
 }
 //Function that send Query writted to the bbdd
 void SendQuery(Console* console, char* sql){
-  sqlite3 *db;
-  char *zErrMsg = 0;
-  int rc;
+	if(strcmp(sql, "COMMIT DATABASE") == 0){
+		BaseCommit();
+		printf("Base de datos guardada");
 
-  // Reset result buffer
-  total_results = 0;
-  display_offset = 0;
-  for(int i = 0; i < 256; i++) query_results[i][0] = '\0';
+		total_results = 0;
+		display_offset = 0;
+		for(int i = 0; i < 256; i++) query_results[i][0] = '\0';
 
-  // Open database
-  rc = sqlite3_open("assets/database/database.db", &db);
-  if(rc){
-    snprintf(query_results[0], sizeof(query_results[0]), "Can't open database: %s", sqlite3_errmsg(db));
-    total_results = 1;
-  } else {
-    // Execute SQL statement
-    rc = sqlite3_exec(db, sql, callback, console, &zErrMsg);
-    if(rc != SQLITE_OK){
-      snprintf(query_results[0], sizeof(query_results[0]), "SQL error: %s", zErrMsg);
-      sqlite3_free(zErrMsg);
-      total_results = 1;
-    } else if(total_results == 0){
-      snprintf(query_results[0], sizeof(query_results[0]), "Query executed successfully, no rows.");
-      total_results = 1;
-    }
-    sqlite3_close(db);
-  }
+		snprintf(query_results[0], sizeof(query_results[0]), "Base de Datos Guardada");
+		total_results = 1;
+	}else{
+		sqlite3 *db;
+		char *zErrMsg = 0;
+		int rc;
+
+		// Reset result buffer
+		total_results = 0;
+		display_offset = 0;
+		for(int i = 0; i < 256; i++) query_results[i][0] = '\0';
+
+		// Open database
+		rc = sqlite3_open(route, &db);
+		if(rc){
+			snprintf(query_results[0], sizeof(query_results[0]), "Can't open database: %s", sqlite3_errmsg(db));
+			total_results = 1;
+		} else {
+			// Execute SQL statement
+			rc = sqlite3_exec(db, sql, callback, console, &zErrMsg);
+			if(rc != SQLITE_OK){
+				snprintf(query_results[0], sizeof(query_results[0]), "SQL error: %s", zErrMsg);
+				sqlite3_free(zErrMsg);
+				total_results = 1;
+			} else if(total_results == 0){
+				snprintf(query_results[0], sizeof(query_results[0]), "Query executed successfully, no rows.");
+				total_results = 1;
+			}
+			sqlite3_close(db);
+		}
+	}
 }
 
 //Function that controls terminal query texting
@@ -1068,9 +1105,17 @@ int QueryTexting(Console* console, bool* iswriting,Tables* currenttable,Columns*
 				stringpos++;
 			}
 		}
+
 		if(esat::IsSpecialKeyDown(esat::kSpecialKey_Backspace) && stringpos > 0){
-			stringpos--; 
-			console->terminal_string[stringpos] = '\0';
+			if(esat::IsSpecialKeyPressed(esat::kSpecialKey_Shift)){
+				while(stringpos != 0){
+					stringpos--; 
+					console->terminal_string[stringpos] = '\0';
+				}
+			}else{
+				stringpos--; 
+				console->terminal_string[stringpos] = '\0';
+			}
     }
 		esat::ResetBufferdKeyInput();
 	}
@@ -1100,6 +1145,18 @@ void DrawTriangle(bool direction, float posX, float posY, int offsetY){
 		esat::DrawSolidPath(points, 3);
 	}
 }
+void DrawTableWhiteBorder(Vec2 point0, Vec2 point2){
+	if(MouseInSquare(point0, point2)){
+		esat::DrawSetStrokeColor(255,255,255,100);
+		esat::DrawSetFillColor(255,255,255,60);
+		float points[8] = {	point0.x, point0.y,
+												point2.x, point0.y,
+												point2.x, point2.y,
+												point0.x, point2.y	};
+		esat::DrawSolidPath(points, 4);
+		
+	}							
+}
 //If mouse is inside of the coords provided it returns a true
 bool MouseInSquare(Vec2 point0, Vec2 point2){
 	float mx = esat::MousePositionX();
@@ -1113,6 +1170,76 @@ bool MouseInSquare(Vec2 point0, Vec2 point2){
 		return false;
 	}
 } 
+void BaseCommit() {
+	const char *src = "assets/database/database.db";
+	const char *dst = "assets/database/databasecopy.db";
+
+	FILE *file = fopen(src, "wb");
+	if (!file) {
+			perror("Error al abrir archivo origen");
+			return;
+	}
+
+	FILE *finalfile = fopen(dst, "rb");
+	if (!finalfile) {
+			perror("Error al crear archivo destino");
+			fclose(file);
+			return;
+	}
+
+	unsigned char buffer[4096]; // mejor usar 4 KB
+	size_t bytes_leidos, bytes_escritos;
+	size_t total = 0;
+
+	while ((bytes_leidos = fread(buffer, 1, sizeof(buffer), finalfile)) > 0) {
+			bytes_escritos = fwrite(buffer, 1, bytes_leidos, file);
+			if (bytes_escritos != bytes_leidos) {
+					perror("Error al escribir en el archivo destino");
+					break;
+			}
+			total += bytes_escritos;
+	}
+
+	fclose(file);
+	fclose(finalfile);
+
+	printf("Copia terminada: %zu bytes copiados.\n", total);
+}
+void CopyBase(){
+	const char *src = "assets/database/database.db";
+	const char *dst = "assets/database/databasecopy.db";
+
+	FILE *file = fopen(src, "rb");
+	if (!file) {
+			perror("Error al abrir archivo origen");
+			return;
+	}
+
+	FILE *finalfile = fopen(dst, "wb");
+	if (!finalfile) {
+			perror("Error al crear archivo destino");
+			fclose(file);
+			return;
+	}
+
+	unsigned char buffer[4096]; // mejor usar 4 KB
+	size_t bytes_leidos, bytes_escritos;
+	size_t total = 0;
+
+	while ((bytes_leidos = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+			bytes_escritos = fwrite(buffer, 1, bytes_leidos, finalfile);
+			if (bytes_escritos != bytes_leidos) {
+					perror("Error al escribir en el archivo destino");
+					break;
+			}
+			total += bytes_escritos;
+	}
+
+	fclose(file);
+	fclose(finalfile);
+
+	printf("Copia terminada: %zu bytes copiados.\n", total);
+}
 //Frees the info list
 void FreeInfoList(struct Info* info){
     struct Info* tmp;
@@ -1157,6 +1284,14 @@ void FreeTableNameList(struct TableName* currenttable){
 void ClosePointers(Console* console, Viewer* viewer){
 	free(console);
 	free(viewer);
+}
+
+void DelDataBaseCopy(){
+	if (remove("assets/database/databasecopy.db") == 0) {
+		printf("Copia de la base de datos borrada correctamente.\n");
+	} else {
+		perror("Error al borrar el archivo");
+	}
 }
 
 //Function that resets a tring to pure \0
