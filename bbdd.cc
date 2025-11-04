@@ -11,7 +11,7 @@
 
 #include "esat_extra/sqlite3.h"
 
-#define WIN32 //Sound can not be played on other OS (At least MacOS), so WIN32 is defined when program is played on Windows10
+#define WIN32 //Sound can not be played on other OS(At least MacOS), so WIN32 is defined when program is played on Windows10
 //If program is used on other OS than Windows10 -> Comment this section
 
 #ifdef WIN32
@@ -27,7 +27,7 @@
 
 #define LinesInScroll 8
 
-char route[35] = {"assets/database/databasecopy.db"};
+char route[35] ={"assets/database/databasecopy.db"};
 
 const int kWindowWidth = 1250, kWindowHeight = 700;
 float scroll_offset_x;
@@ -192,7 +192,7 @@ int esat::main(int argc, char **argv){
 			deltaTime = current_time - last_time;
 		} while((deltaTime) <= 1000.0 / fps);
 		//Begin of frame
-		frameCounter = (frameCounter>=fps)?0:frameCounter +1;
+		frameCounter =(frameCounter>=fps)?0:frameCounter +1;
 		
 
 		//QueryTexting gets user writing inputs
@@ -211,7 +211,7 @@ int esat::main(int argc, char **argv){
 
 		DrawTables(tablename);
 
-		DrawQueryTextLine(console, &writing);	//Function to draw interactive text line (Query writeable line)
+		DrawQueryTextLine(console, &writing);	//Function to draw interactive text line(Query writeable line)
 
 		DrawResultText(console);	//Function to draw text that displays query historial
 
@@ -268,7 +268,7 @@ struct Columns* ReverseColumns(struct Columns* head){
     struct Columns* current = head;
     struct Columns* next = NULL;
 
-    while (current != NULL){
+    while(current != NULL){
         next = current->next;
         current->next = prev;
         prev = current;
@@ -282,7 +282,7 @@ struct Info* ReverseInfo(struct Info* head){
     struct Info* current = head;
     struct Info* next = NULL;
 
-    while (current != NULL){
+    while(current != NULL){
         next = current->next;
         current->next = prev;
         prev = current;
@@ -293,7 +293,7 @@ struct Info* ReverseInfo(struct Info* head){
 //Callback for getting the table names from the db
 static int TableCallBack(void *data,int argc,char **argv,char **ColName){
 	if(argc > 0 && argv[0] !=NULL){
-		struct Tables *currenttable = (struct Tables*)malloc(sizeof(struct Tables));
+		struct Tables *currenttable =(struct Tables*)malloc(sizeof(struct Tables));
 		//Resets it to 0 to avoid crashes
 		memset(currenttable, 0, sizeof(struct Tables));
 		strncpy(currenttable->table_namestring,argv[0],49); //Adds the name to the namestring
@@ -308,8 +308,8 @@ static int TableCallBack(void *data,int argc,char **argv,char **ColName){
 //Callback for getting the column info from the db
 static int ColumnTableCallBack(void *data,int argc,char **argv,char **ColName){
 	if(argc > 0 && argv[0] !=NULL){
-		struct Tables *currenttable = (struct Tables*)data;
-		struct Columns *currentcolumn = (struct Columns*)malloc(sizeof(struct Columns));
+		struct Tables *currenttable =(struct Tables*)data;
+		struct Columns *currentcolumn =(struct Columns*)malloc(sizeof(struct Columns));
 		strncpy(currentcolumn->column_namestring,argv[1],49); //Adds the name to the namestring
 		currentcolumn->column_namestring[49] ='\0'; //Makes sure it ends properly
 		currenttable->ColumnCount++; //Counts the columns
@@ -321,10 +321,10 @@ static int ColumnTableCallBack(void *data,int argc,char **argv,char **ColName){
 }
 //Callback for getting the info from the db
 static int InfoCallback(void *data, int argc, char **argv, char **ColName){
-    struct Tables *currenttable = (struct Tables*)data;
+    struct Tables *currenttable =(struct Tables*)data;
 
     for(int i = 0; i < argc; i++){
-        struct Info *info = (struct Info*)malloc(sizeof(struct Info));
+        struct Info *info =(struct Info*)malloc(sizeof(struct Info));
         memset(info, 0, sizeof(struct Info)); //Resets it to 0 to avoid crashes
         if(argv[i] != NULL){
             strncpy(info->data_namestring, argv[i], 49); //Adds the info to the string
@@ -413,8 +413,8 @@ void CheckTable(){
 
 //Initialization of every struct and data insertion
 void InitWindows(Console** console,Viewer** viewer,TableName** tablename){
-	*viewer = (Viewer*) malloc(sizeof(Viewer));
-	*console = (Console*) malloc(sizeof(Console));
+	*viewer =(Viewer*) malloc(sizeof(Viewer));
+	*console =(Console*) malloc(sizeof(Console));
 
 	//Functions to reset every string displayed
 	ResetString((*console)->infostring,50);
@@ -442,17 +442,17 @@ void InitWindows(Console** console,Viewer** viewer,TableName** tablename){
 	(*viewer)->points[3].x = border;
 	(*viewer)->points[3].y = middle - bottomviewerborder;
 
-	(*viewer)->windowview[0].x = (*viewer)->points[0].x;
-	(*viewer)->windowview[0].y = (*viewer)->points[0].y;
+	(*viewer)->windowview[0].x =(*viewer)->points[0].x;
+	(*viewer)->windowview[0].y =(*viewer)->points[0].y;
 
-	(*viewer)->windowview[1].x = (*viewer)->points[1].x;
-	(*viewer)->windowview[1].y = (*viewer)->points[1].y;
+	(*viewer)->windowview[1].x =(*viewer)->points[1].x;
+	(*viewer)->windowview[1].y =(*viewer)->points[1].y;
 
-	(*viewer)->windowview[2].x = (*viewer)->points[1].x;
-	(*viewer)->windowview[2].y = (*viewer)->points[1].y + border * 4;
+	(*viewer)->windowview[2].x =(*viewer)->points[1].x;
+	(*viewer)->windowview[2].y =(*viewer)->points[1].y + border * 4;
 
-	(*viewer)->windowview[3].x = (*viewer)->points[0].x;
-	(*viewer)->windowview[3].y = (*viewer)->points[0].y + border * 4;
+	(*viewer)->windowview[3].x =(*viewer)->points[0].x;
+	(*viewer)->windowview[3].y =(*viewer)->points[0].y + border * 4;
 	//Coords for the text
 	(*viewer)->infotext.x = border + 20;
 	(*viewer)->infotext.y = topviewerborder + 15;
@@ -482,17 +482,17 @@ void InitWindows(Console** console,Viewer** viewer,TableName** tablename){
 	(*console)->points[3].y = kWindowHeight - border;
 
 	//Console View -> Console name info && console name rectangle
-	(*console)->windowview[0].x = (*console)->points[0].x;
-	(*console)->windowview[0].y = (*console)->points[0].y;
+	(*console)->windowview[0].x =(*console)->points[0].x;
+	(*console)->windowview[0].y =(*console)->points[0].y;
 
-	(*console)->windowview[1].x = (*console)->points[1].x;
-	(*console)->windowview[1].y = (*console)->points[1].y;
+	(*console)->windowview[1].x =(*console)->points[1].x;
+	(*console)->windowview[1].y =(*console)->points[1].y;
 	
-	(*console)->windowview[2].x = (*console)->points[1].x;
-	(*console)->windowview[2].y = (*console)->points[1].y + border * 4;
+	(*console)->windowview[2].x =(*console)->points[1].x;
+	(*console)->windowview[2].y =(*console)->points[1].y + border * 4;
 
-	(*console)->windowview[3].x = (*console)->points[0].x;
-	(*console)->windowview[3].y = (*console)->points[0].y + border * 4;
+	(*console)->windowview[3].x =(*console)->points[0].x;
+	(*console)->windowview[3].y =(*console)->points[0].y + border * 4;
 
 	//String that contais info about that window
 	snprintf((*console)->infostring, sizeof(char) * 50, "Query");
@@ -510,11 +510,11 @@ void InitWindows(Console** console,Viewer** viewer,TableName** tablename){
 	(*console)->triangle[2].x = border + 11;
 	(*console)->triangle[2].y = topviewerborder + dist_down + 14;
 
-	//This part draws rectangle where text can be written (Query Line) && Send Query button
+	//This part draws rectangle where text can be written(Query Line) && Send Query button
 	//Setting terminal border points
 	for(int i = 0; i < 8; i++){
-		(*console)->terminal[i].x = (*console)->windowview[i % 4].x;
-		(*console)->terminal[i].y = (*console)->windowview[i % 4].y + 40;
+		(*console)->terminal[i].x =(*console)->windowview[i % 4].x;
+		(*console)->terminal[i].y =(*console)->windowview[i % 4].y + 40;
 	}
 	//This substracts or sums 10 to make the border inside the window
 	int offset[8] ={10, -10, -10, 10, 10, -10, -10, 10};
@@ -530,17 +530,17 @@ void InitWindows(Console** console,Viewer** viewer,TableName** tablename){
 	}
 	//Send Query Button text coords
 	(*console)->enter_text.x = border + 13;
-	(*console)->enter_text.y = (*console)->terminal[4].y + 15;
+	(*console)->enter_text.y =(*console)->terminal[4].y + 15;
 	snprintf((*console)->enter_string, sizeof(char) * 50, "Send Query");
 
 	//Terminal Text, Where text can be written
 	(*console)->terminal_text.x = border + 15;
-	(*console)->terminal_text.y = (*console)->terminal[0].y + 15;
+	(*console)->terminal_text.y =(*console)->terminal[0].y + 15;
 	snprintf((*console)->terminal_string, sizeof(char) * 125, "");
 
 	//This coords set where to display query historial
-	(*console)->result_text.x = (*console)->enter_text.x;
-	(*console)->result_text.y = (*console)->enter_text.y + 50;
+	(*console)->result_text.x =(*console)->enter_text.x;
+	(*console)->result_text.y =(*console)->enter_text.y + 50;
 
 	snprintf((*console)->font, sizeof(char) * 70, "assets/font/VCR_OSD_MONO_1.001.ttf");
 	(*console)->fontsize = 15;
@@ -560,9 +560,9 @@ void InitPoints(TableName** tablename){
 		struct Info *info = currenttable->info;
 		int row_count = 0;
 
-		while (info != NULL){
+		while(info != NULL){
 			//Calculates the width based on the table's column count and the window width
-			float xlength = (kWindowWidth - border) / currenttable->ColumnCount;
+			float xlength =(kWindowWidth - border) / currenttable->ColumnCount;
 			//Calculates x and y
 			float x = xlength * info->col_index + 10;
 			float y = 15 + 100 + row_count * 20;
@@ -577,11 +577,11 @@ void InitPoints(TableName** tablename){
 		}
 		currenttable = currenttable->next;
 	}
-  currenttable = (Tables*) calloc(sizeof(Tables),1);
+  currenttable =(Tables*) calloc(sizeof(Tables),1);
 	currenttable = tablelist;
 	//Set positions for the names of the tables
 	for(int i=0; i<TableCount;i++){
-			struct TableName *tablename = (struct TableName*)malloc(sizeof(struct TableName));
+			struct TableName *tablename =(struct TableName*)malloc(sizeof(struct TableName));
 			int text_len = strlen(currenttable->table_namestring);
 			//Aprox width of a character
 			float charwidth = 9.0f;
@@ -621,7 +621,7 @@ void InitPoints(TableName** tablename){
 
 		while(currentcolumn != NULL){
 			//Calculates the width based on the table's column count and the window width
-			float xlength = (kWindowWidth - border) / currenttable->ColumnCount;
+			float xlength =(kWindowWidth - border) / currenttable->ColumnCount;
 			float letterSize = 10;
 			//Defines the four corner points of the rectangle
 			currentcolumn->points[0].x = xlength * ColumnCount + letterSize;
@@ -674,7 +674,7 @@ void DrawWindows(Console* console,Viewer* viewer){
 
 	//Terminal Query Text
 	esat::DrawSetFillColor(255,255,255,255);
-  esat::DrawText((console)->terminal_text.x, (console)->terminal_text.y, (console)->terminal_string);
+  esat::DrawText((console)->terminal_text.x,(console)->terminal_text.y,(console)->terminal_string);
 
 	//Terminal Enter button
 	if(MouseInSquare(console->terminal[4],console->terminal[6])){
@@ -687,7 +687,7 @@ void DrawWindows(Console* console,Viewer* viewer){
 
 	//Terminal Enter Button text
 	esat::DrawSetFillColor(255,255,255,255);
-  esat::DrawText((console)->enter_text.x, (console)->enter_text.y, (console)->enter_string);
+  esat::DrawText((console)->enter_text.x,(console)->enter_text.y,(console)->enter_string);
 
   //Viewer && Console Triangle
 	esat::DrawSetStrokeColor(255,255,255,255);
@@ -701,7 +701,7 @@ void DrawTables(TableName* tablename){
 	struct TableName *currenttablename = tablenamelist;
 	struct Tables *currenttable = tablelist;
 	float kCharWidth = 9;
-  scroll_offset_x = (float) TableScroll * kCharWidth * 5.0f; 
+  scroll_offset_x =(float) TableScroll * kCharWidth * 5.0f; 
 	//Draws the table and it's name
 	while(currenttable != NULL){
 		float draw_points[8];
@@ -746,7 +746,7 @@ void DrawTables(TableName* tablename){
 				int row = info->row_index;             
 				int visible_row_index = row - InfoScroll;              
 				if(visible_row_index >= 0 && visible_row_index < NumbOfLines){              
-						float y = DataStartBaseY + (visible_row_index * RowHeight);
+						float y = DataStartBaseY +(visible_row_index * RowHeight);
 						esat::DrawSetStrokeColor(255,255,255,0);
 						esat::DrawSetFillColor(0,0,0,0);
 						esat::DrawSetFillColor(255,255,255,255);
@@ -756,8 +756,8 @@ void DrawTables(TableName* tablename){
 							//DRAW WHITE BORDER
 							if(info->col_index == 0){
 								printf("\nEntra a checkprint");
-								float offset = (float) InfoScroll * RowHeight;
-								Vec2 aux[2] = {	info->stringpoints.x - 5, 								info->stringpoints.y - 28 - offset,
+								float offset =(float) InfoScroll * RowHeight;
+								Vec2 aux[2] ={	info->stringpoints.x - 5, 								info->stringpoints.y - 28 - offset,
 																kWindowWidth - info->stringpoints.x + 5, 	info->stringpoints.y - 7 - offset};
 
 								DrawTableWhiteBorder(aux[0], aux[1]);
@@ -794,10 +794,10 @@ void ResetTables(Tables* currenttable,Columns* currentcolumn,TableName* currentt
 
 //Function to draw Query Historial, and every line of It, appart from animation the line that displays pos of writing |
 void DrawQueryTextLine(Console* console, bool* iswriting){
-	float lineX = (console)->terminal_text.x, lineY = (console)->terminal_text.y;
+	float lineX =(console)->terminal_text.x, lineY =(console)->terminal_text.y;
 
 	float linePos = strlen(console->terminal_string) * 9;
-	float lineOffset = linePos + (float) lineX + 2.5f;
+	float lineOffset = linePos +(float) lineX + 2.5f;
 	static int LineAnimation = 0;
 	//If user if writing
 	if(*iswriting){
@@ -838,9 +838,9 @@ void DrawResultText(Console* console){
 }
 //Function to process new lines in the query result lines
 void HandleMouseScroll(Console* console, Viewer* viewer){
-	Vec2 TablePoints[2] = {	tablelist->columns->stringpoints.x, tablelist->columns->stringpoints.y - 50,
+	Vec2 TablePoints[2] ={	tablelist->columns->stringpoints.x, tablelist->columns->stringpoints.y - 50,
 													tablelist->columns->stringpoints.x + kWindowWidth, tablelist->columns->stringpoints.y - 20};
-	Vec2 InfoPoints[2] = {	tablelist->info->stringpoints.x, tablelist->info->stringpoints.y - 50,
+	Vec2 InfoPoints[2] ={	tablelist->info->stringpoints.x, tablelist->info->stringpoints.y - 50,
 													tablelist->info->stringpoints.x + kWindowWidth, tablelist->info->stringpoints.y + 450};
 	if(esat::MouseWheelY() < MouseY){
 		MouseY = esat::MouseWheelY();
@@ -896,7 +896,7 @@ static int callback(void *data, int argc, char **argv, char **azColName){
 
   if(total_results >= 256) return 0;
 
-  char line[256] = {0};
+  char line[256] ={0};
   // Concatenate column names and their values in one line
   for(int i = 0; i < argc; i++){
     const char* col = azColName[i] ? azColName[i] : "(null)";
@@ -940,7 +940,7 @@ void SendQuery(Console* console, char* sql){
 		if(rc){
 			snprintf(query_results[0], sizeof(query_results[0]), "Can't open database: %s", sqlite3_errmsg(db));
 			total_results = 1;
-		} else {
+		} else{
 			// Execute SQL statement
 			rc = sqlite3_exec(db, sql, callback, console, &zErrMsg);
 			if(rc != SQLITE_OK){
@@ -959,14 +959,14 @@ void SendQuery(Console* console, char* sql){
 //Function that controls terminal query texting
 int QueryTexting(Console* console, bool* iswriting,Tables* currenttable,Columns* currentcolumn,TableName* currenttablename,Info* info){
 	static int stringpos = 0;
-	//These two ifs controll whether its writing or not (If user has clicked in text window or not)
+	//These two ifs controll whether its writing or not(If user has clicked in text window or not)
 	if(MouseInSquare(console->terminal[0],console->terminal[2]) && esat::MouseButtonDown(0) && *iswriting == false){
 		*iswriting = true;
 	}
 	if(!MouseInSquare(console->terminal[0],console->terminal[2]) && esat::MouseButtonDown(0) && *iswriting == true){
 		*iswriting = false;
 	}
-	//These one controls Send Button -> If player has his mouse pointing to it and query line has something to send (Stringpos > 0)
+	//These one controls Send Button -> If player has his mouse pointing to it and query line has something to send(Stringpos > 0)
 	if(MouseInSquare(console->terminal[4],console->terminal[6])){
 		if(esat::MouseButtonDown(0) && stringpos > 0){
 			//This part is to set last char to \0
@@ -990,8 +990,8 @@ int QueryTexting(Console* console, bool* iswriting,Tables* currenttable,Columns*
 	if(*iswriting){
 		char auxkey = '\0';
 		auxkey = esat::GetNextPressedKey();
-		// Fix layout mismatch for Spanish keyboard (ISO layout)
-		switch(auxkey) {
+		// Fix layout mismatch for Spanish keyboard(ISO layout)
+		switch(auxkey){
 			case '/': auxkey = '-'; break;   // "/" key becomes "-"
 			case '-': auxkey = '\''; break;  // "-" key becomes "'"
 			case '\'': auxkey = '/'; break;  // "'" key becomes "/"
@@ -1001,99 +1001,33 @@ int QueryTexting(Console* console, bool* iswriting,Tables* currenttable,Columns*
 		if(auxkey != '\0' && stringpos < 200){
 			if(esat::IsSpecialKeyPressed(esat::kSpecialKey_Shift)){
 				switch(auxkey){
-					case '1':{
-						auxkey = '!';
-						break;
-					}
-					case '2':{
-						auxkey = '"';
-						break;
-					}
-					case '4':{
-						auxkey = '$';
-						break;
-					}
-					case '5':{
-						auxkey = '%';
-						break;
-					}
-					case '6':{
-						auxkey = '&';
-						break;
-					}
-					case '7':{
-						auxkey = '/';
-						break;
-					}
-					case '8':{
-						auxkey = '(';
-						break;
-					}
-					case '9':{
-						auxkey = ')';
-						break;
-					}
-					case '0':{
-						auxkey = '=';
-						break;
-					}
-					case ',':{
-						auxkey = ';';
-						break;
-					}
-					case '.':{
-						auxkey = ':';
-						break;
-					}
-					case '-':{
-						auxkey = '_';
-						break;
-					}
-					case '\'':{
-						auxkey = '?';
-						break;
-					}
-					case '<':{
-						auxkey = '>';
-						break;
-					}
-					case '+':{
-						auxkey = '*';
-						break;
-					}
+					case '1':{ 	auxkey = '!'; break;	}
+					case '2':{	auxkey = '"'; break;	}
+					case '4':{	auxkey = '$'; break;	}
+					case '5':{	auxkey = '%'; break;	}
+					case '6':{	auxkey = '&'; break;	}
+					case '7':{	auxkey = '/'; break;	}
+					case '8':{	auxkey = '('; break;	}
+					case '9':{	auxkey = ')'; break;	}
+					case '0':{	auxkey = '='; break;	}
+					case ',':{	auxkey = ';'; break;	}
+					case '.':{	auxkey = ':'; break;	}
+					case '-':{	auxkey = '_'; break;	}
+					case '\'':{	auxkey = '?'; break;	}
+					case '<':{	auxkey = '>'; break;	}
+					case '+':{	auxkey = '*'; break;	}
 				}
 				console->terminal_string[stringpos] = auxkey;
 				stringpos++;
 			}else if(esat::IsSpecialKeyPressed(esat::kSpecialKey_Alt)){
 				switch(auxkey){
-					case '1':{
-						auxkey = '|';
-						break;
-					}
-					case '2':{
-						auxkey = '@';
-						break;
-					}
-					case '3':{
-						auxkey = '#';
-						break;
-					}
-					case '4':{
-						auxkey = '~';
-						break;
-					}
-					case '6':{
-						//auxkey = '¬'; //This key doesn't work
-						break;
-					}
-					case '+':{
-						auxkey = ']';
-						break;
-					}
-					case '`':{
-						auxkey = '[';
-						break;
-					}
+					case '1':{	auxkey = '|'; break;	}
+					case '2':{	auxkey = '@'; break;	}
+					case '3':{	auxkey = '#'; break;	}
+					case '4':{	auxkey = '~'; break;	}
+					case '6':{/*auxkey = '¬'; break;*/} //This key doesn't work;
+					case '+':{	auxkey = ']'; break;	}
+					case '`':{	auxkey = '['; break;	}
 				}
 				console->terminal_string[stringpos] = auxkey;
 				stringpos++;
@@ -1130,7 +1064,7 @@ void DrawTriangle(bool direction, float posX, float posY, int offsetY){
 	if(direction){
 		//To paint a triangle down to say player can yo further DOWN in the scroll
 		//ARROW UP
-		float points[6] = { 7 + posX,  8 + posY + offsetY,
+		float points[6] ={ 7 + posX,  8 + posY + offsetY,
 												15 + posX,  8 + posY + offsetY, 
 												11 + posX, 14 + posY + offsetY};
 		esat::DrawSetStrokeColor(255,255,255,255);
@@ -1138,7 +1072,7 @@ void DrawTriangle(bool direction, float posX, float posY, int offsetY){
 	}else{
 		//To paint a triangle up to say player can yo further UP in the scroll
 		//ARROW DOWN
-		float points[6] = { 7 + posX,  8 + posY + offsetY + 5,
+		float points[6] ={ 7 + posX,  8 + posY + offsetY + 5,
 												15 + posX,  8 + posY + offsetY + 5, 
 												11 + posX,  1 + posY + offsetY + 5};
 		esat::DrawSetStrokeColor(255,255,255,255);
@@ -1149,7 +1083,7 @@ void DrawTableWhiteBorder(Vec2 point0, Vec2 point2){
 	if(MouseInSquare(point0, point2)){
 		esat::DrawSetStrokeColor(255,255,255,100);
 		esat::DrawSetFillColor(255,255,255,60);
-		float points[8] = {	point0.x, point0.y,
+		float points[8] ={	point0.x, point0.y,
 												point2.x, point0.y,
 												point2.x, point2.y,
 												point0.x, point2.y	};
@@ -1170,34 +1104,35 @@ bool MouseInSquare(Vec2 point0, Vec2 point2){
 		return false;
 	}
 } 
-void BaseCommit() {
+//Function to commit the database and save it
+void BaseCommit(){
 	const char *src = "assets/database/database.db";
 	const char *dst = "assets/database/databasecopy.db";
 
 	FILE *file = fopen(src, "wb");
-	if (!file) {
-			perror("Error al abrir archivo origen");
-			return;
+	if(!file){
+		perror("Error al abrir archivo origen");
+		return;
 	}
 
 	FILE *finalfile = fopen(dst, "rb");
-	if (!finalfile) {
-			perror("Error al crear archivo destino");
-			fclose(file);
-			return;
+	if(!finalfile){
+		perror("Error al crear archivo destino");
+		fclose(file);
+		return;
 	}
 
 	unsigned char buffer[4096]; // mejor usar 4 KB
 	size_t bytes_leidos, bytes_escritos;
 	size_t total = 0;
 
-	while ((bytes_leidos = fread(buffer, 1, sizeof(buffer), finalfile)) > 0) {
-			bytes_escritos = fwrite(buffer, 1, bytes_leidos, file);
-			if (bytes_escritos != bytes_leidos) {
-					perror("Error al escribir en el archivo destino");
-					break;
-			}
-			total += bytes_escritos;
+	while((bytes_leidos = fread(buffer, 1, sizeof(buffer), finalfile)) > 0){
+		bytes_escritos = fwrite(buffer, 1, bytes_leidos, file);
+		if(bytes_escritos != bytes_leidos){
+				perror("Error al escribir en el archivo destino");
+				break;
+		}
+		total += bytes_escritos;
 	}
 
 	fclose(file);
@@ -1210,29 +1145,29 @@ void CopyBase(){
 	const char *dst = "assets/database/databasecopy.db";
 
 	FILE *file = fopen(src, "rb");
-	if (!file) {
-			perror("Error al abrir archivo origen");
-			return;
+	if(!file){
+		perror("Error al abrir archivo origen");
+		return;
 	}
 
 	FILE *finalfile = fopen(dst, "wb");
-	if (!finalfile) {
-			perror("Error al crear archivo destino");
-			fclose(file);
-			return;
+	if(!finalfile){
+		perror("Error al crear archivo destino");
+		fclose(file);
+		return;
 	}
 
 	unsigned char buffer[4096]; // mejor usar 4 KB
 	size_t bytes_leidos, bytes_escritos;
 	size_t total = 0;
 
-	while ((bytes_leidos = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-			bytes_escritos = fwrite(buffer, 1, bytes_leidos, finalfile);
-			if (bytes_escritos != bytes_leidos) {
-					perror("Error al escribir en el archivo destino");
-					break;
-			}
-			total += bytes_escritos;
+	while((bytes_leidos = fread(buffer, 1, sizeof(buffer), file)) > 0){
+		bytes_escritos = fwrite(buffer, 1, bytes_leidos, finalfile);
+		if(bytes_escritos != bytes_leidos){
+				perror("Error al escribir en el archivo destino");
+				break;
+		}
+		total += bytes_escritos;
 	}
 
 	fclose(file);
@@ -1243,7 +1178,7 @@ void CopyBase(){
 //Frees the info list
 void FreeInfoList(struct Info* info){
     struct Info* tmp;
-    while (info){
+    while(info){
         tmp = info;
         info = info->next;
         free(tmp);
@@ -1252,7 +1187,7 @@ void FreeInfoList(struct Info* info){
 //Frees the column list
 void FreeColumnsList(struct Columns* col){
     struct Columns* tmp;
-    while (col){
+    while(col){
         tmp = col;
         col = col->next;
         free(tmp);
@@ -1261,7 +1196,7 @@ void FreeColumnsList(struct Columns* col){
 //Frees the table list
 void FreeTableList(struct Tables* tbl){
     struct Tables* tmp;
-    while (tbl){
+    while(tbl){
         tmp = tbl;
         tbl = tbl->next;
         FreeColumnsList(tmp->columns);
@@ -1273,7 +1208,7 @@ void FreeTableList(struct Tables* tbl){
 //Frees the table name list
 void FreeTableNameList(struct TableName* currenttable){
     struct TableName* tmp;
-    while (currenttable != NULL){
+    while(currenttable != NULL){
         tmp = currenttable;
         currenttable = currenttable->next;
         free(tmp);
@@ -1287,9 +1222,9 @@ void ClosePointers(Console* console, Viewer* viewer){
 }
 
 void DelDataBaseCopy(){
-	if (remove("assets/database/databasecopy.db") == 0) {
+	if(remove("assets/database/databasecopy.db") == 0){
 		printf("Copia de la base de datos borrada correctamente.\n");
-	} else {
+	} else{
 		perror("Error al borrar el archivo");
 	}
 }
